@@ -21,3 +21,4 @@ urlpatterns=[
     path('Member/<int:pk>/', views.MemberDetail.as_view()),
     path('Member/', views.MemberList.as_view()),
 ]
+
