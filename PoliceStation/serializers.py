@@ -19,7 +19,7 @@ class  PolicestationSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['psid', 'ps_name']
 
  
-class SubscribeSerializer(serializers.HyperlinkedModelSerializer):
+class SubscribeSerializer(serializers.ModelSerializer):
      class Meta:
       model = Subscribe
       fields = ['subcription_id','psid',  'community', 'subscribed_on','until']

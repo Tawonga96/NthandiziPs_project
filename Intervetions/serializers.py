@@ -2,7 +2,7 @@ from rest_framework import serializers
 from Intervetions.models import CommunityIntervention, Intervention, PoliceIntevention, Status
 
 
-class CommunityIntervetionSerializer(serializers.HyperlinkedModelSerializer):
+class CommunityIntervetionSerializer(serializers.ModelSerializer):
      class Meta:
         model = CommunityIntervention
         fields = ['Intervention', 'initiated_by']

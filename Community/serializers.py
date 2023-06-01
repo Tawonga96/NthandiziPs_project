@@ -2,7 +2,7 @@ from rest_framework import serializers
 from Community.models import Citizen, Community, CommunityLeader, Household, Housemember, Member
 
 
-class CitizenSerializer(serializers.HyperlinkedModelSerializer):
+class CitizenSerializer(serializers.ModelSerializer):
      class Meta:
         model = Citizen
         fields = ['cid', 'occupation']

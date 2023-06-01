@@ -2,7 +2,7 @@ from rest_framework import serializers
 from Cases.models import Alert ,AlertText,AlertMultimedia
 
 
-class AlertSerializer(serializers.HyperlinkedModelSerializer):
+class AlertSerializer(serializers.ModelSerializer):
       class Meta:
         model = Alert
         fields = ['alert_id', 'code', 'author','origin','a_type','false_alarm','voided_by','closed_at','closed_by']
