@@ -12,7 +12,7 @@ class CitizenSerializer(serializers.ModelSerializer):
 class CommunitySerializer(serializers.HyperlinkedModelSerializer):
      class Meta:
         model = Community
-        fields = ['community_id', 'district', 'comm_name','area,date_added']
+        fields = ['community_id', 'district', 'comm_name','area','date_added']
 
 
 class CommunityLeaderSerializer(serializers.HyperlinkedModelSerializer):

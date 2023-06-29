@@ -1,5 +1,7 @@
 from django.db import models
 from User.models import User
+# from django.contrib.gis.db import models
+
 
 # Create your models here.
 class Citizen(models.Model):
@@ -9,6 +11,8 @@ class Citizen(models.Model):
     class Meta:
         managed = False
         db_table = 'citizen'
+
+
 
 class Community(models.Model):
     community_id = models.IntegerField(primary_key=True)

@@ -4,14 +4,14 @@ from Community.models import Member
 
 # Create your models here.
 class Alert(models.Model):
-    alert_id = models.IntegerField(primary_key=True)
+    alert_id = models.IntegerField(primary_key=True, auto_created=True)
     a_time = models.DateTimeField()
     code = models.CharField(max_length=128)
     author = models.ForeignKey(Member, models.DO_NOTHING, db_column='author')
     origin = models.TextField(blank=True, null=True)  # This field type is a guess.
-    a_type = models.CharField(max_length=20)
-    false_alarm = models.IntegerField()
-    voided_by = models.IntegerField()
+    a_type = models.CharField(max_length=20, null=True, blank=True)
+    false_alarm = models.IntegerField(blank=True, null=True)
+    voided_by = models.IntegerField(blank=True, null=True)
     closed_at = models.DateTimeField(blank=True, null=True)
     closed_by = models.IntegerField(blank=True, null=True)
 

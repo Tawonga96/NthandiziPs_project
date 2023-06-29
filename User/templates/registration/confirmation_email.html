@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmation Email</title>
+</head>
+<body>
+    <h1>Nthandizi Registration</h1>
+    <p>Hello, {{ user.fname }}!</p>
+    <p>Thank you for registering with our mobile application.</p>
+    <p>We have confirmed your registration</p>
+    <p>The following are your details to use</p>
+    <ul>
+        <li>{{ user.fname }}</li>
+        <li>{{ user.lname }}</li>
+        <li>{{ user.pnumber }}</li>
+        <li>{{ user.email }}</li>
+        <li>{{ user.password }}</li>
+        <li>{{ token }}</li>
+    </ul>
+    <p>Remember to change your password this is the default passowrd.Thank you</p>
+    <!-- <a href="{{ confirmation_url }}">Confirm Registration</a> -->
+</body>
+</html>

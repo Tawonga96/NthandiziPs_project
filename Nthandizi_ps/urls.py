@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/v1/Community/', include('Community.urls')),
     path('api/v1/Intervetions/', include('Intervetions.urls')),
     path('api/v1/PoliceStation/', include('PoliceStation.urls')),
+
 ]
