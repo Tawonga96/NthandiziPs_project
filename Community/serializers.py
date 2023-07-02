@@ -7,8 +7,6 @@ class CitizenSerializer(serializers.ModelSerializer):
         model = Citizen
         fields = ['cid', 'occupation']
 
-
-
 class CommunitySerializer(serializers.HyperlinkedModelSerializer):
      class Meta:
         model = Community
@@ -16,7 +14,7 @@ class CommunitySerializer(serializers.HyperlinkedModelSerializer):
 
 
 class CommunityLeaderSerializer(serializers.HyperlinkedModelSerializer):
-     class Meta:
+      class Meta:
         model = CommunityLeader
         fields = ['leader', 'community','elected_on']
 
