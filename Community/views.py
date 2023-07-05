@@ -13,7 +13,7 @@ class CommunityDetail(generics.RetrieveAPIView):
 class CommunityList(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = Community.objects.all()
-    serializer_class = CommunitySerializer
+    serializer_class = CommunitySerializer 
 
 
 class CitizenDetail(generics.RetrieveAPIView):

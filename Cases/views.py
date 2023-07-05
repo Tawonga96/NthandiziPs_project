@@ -11,8 +11,6 @@ class AlertDetail(generics.RetrieveUpdateAPIView):
     serializer_class = AlertSerializer
 
 
-
-
 class AlertList(generics.ListCreateAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = Alert.objects.all()
@@ -34,21 +32,22 @@ class AlertTextList(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            # Retrieve the associated Alert instance based on alert_id
-            alert_id = request.data.get('alert_id')
-            alert = Alert.objects.get(alert_id=alert_id)
+            # Extract the message and code from the request data
+            message = serializer.validated_data['message']
+            code = request.data.get('code')  # Extract the code field
 
-            # Retrieve other values needed for the AlertText instance
-            code = request.data.get('code')
-            author = request.data.get('author')
-            origin = request.data.get('origin')
-            a_type = request.data.get('a_type')
+            # Create a new Alert instance and set the code
+            alert = Alert.objects.create(code=code)
 
-            # Set the foreign key relationship and other values
-            serializer.save(alert=alert, code=code, author=author, origin=origin, a_type=a_type)
+            # Set the foreign key relationship
+            serializer.validated_data['alert'] = alert
+
+            # Save the serializer to create the AlertText instance
+            self.perform_create(serializer)
 
             # Return success response
             return Response({'message': 'AlertText created successfully.'}, status=status.HTTP_201_CREATED)
+
 
         except Alert.DoesNotExist:
             # Return error response if the associated Alert instance doesn't exist

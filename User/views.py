@@ -14,8 +14,10 @@ from django.core.mail import send_mail
 # from User.models import User, Citizen, Member, CommunityLeader, Household, Housemember
 # from .serializers import UserSerializer
 
-from Community.models import Citizen, Member, CommunityLeader, Household, Housemember
-from User.models import User
+from Community.models import Citizen, Member, CommunityLeader,Community, Household, Housemember
+# from User.models import User
+from User.serializers import UserSerializer
+
 
 
 
@@ -59,7 +61,8 @@ class RegisterView(APIView):
             password = serializer.validated_data['password']
             otp = serializer.validated_data['otp']
             is_community_leader = serializer.validated_data.get('is_community_leader', False)
-           
+            community_id = serializer.validated_data.get('community', {}).get('community_id')
+
             # Perform registration logic here
             user = User.objects.create(
                 fname=fname,
@@ -71,20 +74,46 @@ class RegisterView(APIView):
                 is_community_leader=is_community_leader,
                 is_active=1
             )
+
             # Save the user object before creating related objects
             user.save()
-            # Associate with community leader
-            if is_community_leader:
-                community_leader = CommunityLeader.objects.create(leader=user)
-                user.community_leader = community_leader
+
+            if is_community_leader and community_id:
+                # Create the Member object associated with the user
+                member = Member.objects.create(
+                    cid=user,
+                    community=None,  # Set to None for now, will be updated later
+                    date_joined=datetime.timezone.now(),
+                    left_on=None,
+                    citizen_typ='Community Leader'
+                )
+
                 # Assign the community ID based on the selected community in the serializer
-                community = serializer.validated_data.get('community_leader').get('community')
-                community_leader.community = community
-                community_leader.save()
-               
+                community_id = serializer.validated_data.get('community_id')
+                if community_id:
+                    community = Community.objects.get(community_id=community_id)
+                    member.community = community
+                    member.save()
+
+                    # Create the CommunityLeader object
+                    community_leader = CommunityLeader.objects.create(
+                        leader=member,
+                        community=community,
+                        elected_on=datetime.timezone.now()
+                    )
+                else:
+                    # Handle the case when no community ID is provided
+                    community_leader = CommunityLeader.objects.create(
+                        leader=member,
+                        elected_on=datetime.timezone.now()
+                    )
+
+                # Associate the community leader with the user
+                user.community_leader = community_leader
+                user.save()
 
             # Save the user object
-            user.save()
+            # user.save()
 
             token = self.generate_token()
 

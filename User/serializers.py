@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from User.models import User
 from Community.serializers import CommunityLeaderSerializer
+from Community.serializers import CommunitySerializer
+
 
 
 class LoginSerializer(serializers.Serializer):
@@ -19,17 +21,18 @@ class RegisterSerializer(serializers.Serializer):
 class CommunityLeaderSerializer(serializers.Serializer):
     fname = serializers.CharField()
     password = serializers.CharField() 
-    # is_community_leader = serializers.BooleanField()
-
 
 class UserSerializer(serializers.ModelSerializer):
     login = LoginSerializer(required=False)
     register =RegisterSerializer(required=False)
     community_leader = CommunityLeaderSerializer(required=False)
+    is_community_leader = serializers.BooleanField(required=False, default=False)
+    community = CommunitySerializer(required=False)  # Import and include the CommunitySerializer here
+
   
     class Meta:   
         model = User
-        fields = ['fname', 'lname', 'pnumber', 'password','email','otp','is_community_leader','is_active','login','register','community_leader']
+        fields = ['fname', 'lname', 'pnumber', 'password','email','otp','is_community_leader','is_active','login','register','community_leader','community']
 
 
 
