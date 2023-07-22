@@ -1,26 +1,30 @@
 from rest_framework import serializers
+# from Cases.serializers import AlertSerializer
 from Intervetions.models import CommunityIntervention, Intervention, PoliceIntevention, Status
 
 
 class CommunityIntervetionSerializer(serializers.ModelSerializer):
+     
      class Meta:
         model = CommunityIntervention
-        fields = ['Intervention', 'initiated_by']
+      #   fields = ['Intervention', 'initiated_by']
+        fields = ['initiated_by'] 
 
 
-class IntervetionSerializer(serializers.HyperlinkedModelSerializer):
-     class Meta:
-        model = Intervention
-        fields = ['Intervention_id', 'time_initiated', 'alert']
+class InterventionSerializer(serializers.ModelSerializer):
+      community_intervention = CommunityIntervetionSerializer(many=False, read_only=True)
+
+      class Meta:
+         model = Intervention
+         fields = ['intervention_id','alert','community_intervention']
 
 
-class PoliceIntervetionSerializer(serializers.HyperlinkedModelSerializer):
+class PoliceIntervetionSerializer(serializers.ModelSerializer):
      class Meta:
         model = PoliceIntevention
         fields = ['intervention', 'initiated_by']
 
-class StatusSerializer(serializers.HyperlinkedModelSerializer):
+class StatusSerializer(serializers.ModelSerializer):
      class Meta:
         model = Status
-        fields = ['istatus', 'Intervetion', 'status', 'updated_on']
-
+        fields = ['intervention', 'intervention_status', 'updated_on']

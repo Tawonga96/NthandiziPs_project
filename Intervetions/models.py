@@ -14,7 +14,7 @@ class CommunityIntervention(models.Model):
 
 class Intervention(models.Model):
     intervention_id = models.IntegerField(primary_key=True)
-    time_initiated = models.DateTimeField()
+    time_initiated = models.DateTimeField(auto_now_add=True)
     alert = models.ForeignKey(Alert, models.DO_NOTHING)
 
     class Meta:
@@ -31,9 +31,9 @@ class PoliceIntevention(models.Model):
 
 class Status(models.Model):
     istatus = models.IntegerField(db_column='iStatus', primary_key=True)  # Field name made lowercase.
-    intervention = models.ForeignKey(Intervention, models.DO_NOTHING)
-    status = models.TextField()
-    updated_on = models.DateTimeField()
+    intervention= models.ForeignKey(Intervention, models.DO_NOTHING)
+    intervention_status = models.TextField()
+    updated_on = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = False

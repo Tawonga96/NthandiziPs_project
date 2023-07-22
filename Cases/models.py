@@ -5,7 +5,7 @@ from Community.models import Member
 # Create your models here.
 class Alert(models.Model):
     alert_id = models.IntegerField(primary_key=True, auto_created=True)
-    a_time = models.DateTimeField()
+    a_time = models.DateTimeField(auto_now_add=True)
     code = models.CharField(max_length=128)
     author = models.ForeignKey(Member, models.DO_NOTHING, db_column='author')
     origin = models.TextField(blank=True, null=True)  # This field type is a guess.
@@ -21,7 +21,7 @@ class Alert(models.Model):
 
 
 class AlertText(models.Model):
-    alert = models.OneToOneField(Alert, models.DO_NOTHING, primary_key=True)
+    alert= models.OneToOneField(Alert, models.DO_NOTHING, primary_key=True)
     message = models.TextField()
 
     class Meta:

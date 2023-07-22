@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'PoliceStation',
     'User',
     'rest_framework',
+    'rest_framework.authtoken',
+
 ]
 
 MIDDLEWARE = [
@@ -87,7 +89,7 @@ GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, 'Documents', 'gdal')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'nthandizi_db',
+        'NAME': 'nthandizips_db',
         'USER': 'root', 
         'PASSWORD': '', 
         'HOST': 'localhost',
@@ -104,7 +106,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'tawongachauluntha22@gmail.com'  # Replace with your email address
-EMAIL_HOST_PASSWORD = 'dxgmstmsvnxduuon'  # Replace with your email password or app password
+EMAIL_HOST_PASSWORD = 'pkkaraaowfmmvlmp'  # Replace with your email password or app password
 EMAIL_USE_TLS = True
 # DEFAULT_FROM_EMAIL = 'tawahcngwira96@gmail.com'  # Replace with your email address
 

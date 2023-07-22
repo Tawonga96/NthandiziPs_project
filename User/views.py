@@ -1,39 +1,19 @@
-import datetime
-# from Community.models import Citizen, Member, CommunityLeader, Household, Housemember
-
-# from Community.models import Community, Member, Household, Citizen, Housemember, CommunityLeader
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from User.serializers import *
-from rest_framework import generics, permissions
-# from django.contrib.auth.hashers import make_password
-import secrets
+from Community.models import Citizen
+import random
+from django.utils import timezone
+import re
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-# import re
-# from User.models import User, Citizen, Member, CommunityLeader, Household, Housemember
-# from .serializers import UserSerializer
-
-from Community.models import Citizen, Member, CommunityLeader,Community, Household, Housemember
-# from User.models import User
+from User.serializers import *
+from rest_framework import generics, permissions, status
 from User.serializers import UserSerializer
+from rest_framework.response import Response
+from User.models import User
+from twilio.rest import Client
 
 
 
-
-
-# from django.contrib.auth import authenticate, login
-# from rest_framework.authtoken.models import Token
-# from django.core.mail import EmailMessage
-
-# from django.utils.crypto import get_random_string
-# from django.utils.http import urlsafe_base64_encode
-# from django.utils.http import urlsafe_base64_encode
-# from django.utils.encoding import force_bytes
-# from django.template.loader import render_to_string
-
-
-# Test views
 class UserDetail(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = User.objects.all()
@@ -45,197 +25,158 @@ class UserList(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-
-class RegisterView(APIView):
+    
+class UserRegistration(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
+    serializer_class = UserSerializer
 
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if serializer.is_valid():
-            #extract data from validated serializer before creating the user object
-            fname = serializer.validated_data['fname']
-            lname = serializer.validated_data['lname']
-            pnumber = serializer.validated_data['pnumber']
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
-            otp = serializer.validated_data['otp']
-            is_community_leader = serializer.validated_data.get('is_community_leader', False)
-            community_id = serializer.validated_data.get('community', {}).get('community_id')
+        # Generate a random 6-digit OTP
+        otp = random.randint(1000, 9999)
 
-            # Perform registration logic here
-            user = User.objects.create(
-                fname=fname,
-                lname=lname,
-                pnumber=pnumber,
-                email=email,
-                password=password,
-                otp=otp,
-                is_community_leader=is_community_leader,
-                is_active=1
-            )
+        # Set the OTP and is_active in the validated data
+        serializer.validated_data['otp'] = otp
+        serializer.validated_data['is_active'] = 1  # Set is_active to 1
 
-            # Save the user object before creating related objects
-            user.save()
+        # Extract validated data from the serializer
+        fname = serializer.validated_data['fname']
+        lname = serializer.validated_data['lname']
+        pnumber = serializer.validated_data['pnumber']
+        password = serializer.validated_data['password']
+        email = serializer.validated_data['email']
+        otp = serializer.validated_data['otp']
+        is_active = serializer.validated_data['is_active']
 
-            if is_community_leader and community_id:
-                # Create the Member object associated with the user
-                member = Member.objects.create(
-                    cid=user,
-                    community=None,  # Set to None for now, will be updated later
-                    date_joined=datetime.timezone.now(),
-                    left_on=None,
-                    citizen_typ='Community Leader'
-                )
+        # Check if any of the required fields are empty
+        if not fname or not lname or not pnumber or not password or not email:
+            return Response({'error': 'Please provide values for all required fields.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+       
+        # Validate fname and lname format using custom validators
+        fname = serializer.validated_data['fname']
+        lname = serializer.validated_data['lname']
+        if not self.validate_name(fname):
+            return Response({'error': 'First name must start with an uppercase letter.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.validate_name(lname):
+            return Response({'error': 'Last name must start with an uppercase letter.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Assign the community ID based on the selected community in the serializer
-                community_id = serializer.validated_data.get('community_id')
-                if community_id:
-                    community = Community.objects.get(community_id=community_id)
-                    member.community = community
-                    member.save()
+        # Validate the phone number format using a custom method
+        pnumber = serializer.validated_data['pnumber']
+        if not self.validate_phone_number(pnumber):
+            return Response({'error': 'Phone number must have 13 digits and start with +265.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                    # Create the CommunityLeader object
-                    community_leader = CommunityLeader.objects.create(
-                        leader=member,
-                        community=community,
-                        elected_on=datetime.timezone.now()
-                    )
-                else:
-                    # Handle the case when no community ID is provided
-                    community_leader = CommunityLeader.objects.create(
-                        leader=member,
-                        elected_on=datetime.timezone.now()
-                    )
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response({'error': 'Invalid email format.'}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Associate the community leader with the user
-                user.community_leader = community_leader
-                user.save()
+        # Check if the email already exists in the database
+        if User.objects.filter(email=email).exists():
+            return Response({'error': 'Email already exists. Please use a different email.'}, status=status.HTTP_409_CONFLICT)
 
-            # Save the user object
-            # user.save()
+        # Validate the password format using custom password validator
+        password = serializer.validated_data['password']
+        if not self.validate_password(password):
+            return Response({'error': 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            token = self.generate_token()
+        # Create the user object
+        user = User.objects.create(
+            fname=fname,
+            lname=lname,
+            pnumber=pnumber,
+            password=password,
+            email=email,
+            otp=otp,
+            is_active=is_active,
+        )
 
-            # Send confirmation email
-            self.send_confirmation_email(user, token)
-            
-            # Return response
-            return Response({'message': 'User registered successfully. Confirmation email sent.'}, status=status.HTTP_201_CREATED)
+        # Send the confirmation email to the user
+        self.send_confirmation_email(user)
 
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Return a response with the created user data
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
-
-    def generate_token(self):
-        token = secrets.token_urlsafe(32)
-        return token 
-
-
-    def send_confirmation_email(self, user, token):
+    def send_confirmation_email(self, user):
         subject = 'Nthandizi App Registration Confirmation'
-        message = f'Hi {user.fname},\n\nThank you for registering with Nthandizi Police Service Application.\nYour account has been successfully created.\nYou can now Log in with the following details:\n\nFirstname: {user.fname}\n\nLastname: {user.lname}\n\nPhone No: {user.pnumber}\n\nEmail: {user.email}\n\nPassword: {user.password}\n\nOtp: {user.otp}\n\nPlease Remember to change the password after login the one is the default password'
+        message = f'''
+        Hi {user.fname},
+
+        Thank you for registering with Nthandizi Police Service Application.
+        Your account has been successfully created.
+
+        You can now Log in with the following details:
+
+        User ID: {user.uid}
+        Firstname: {user.fname}
+        Lastname: {user.lname}
+        Phone No: {user.pnumber}
+        Email: {user.email}
+        OTP: {user.otp}
+        Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
+
+        Please Remember to change the password after login; the default password is provided for initial access.
+
+        Regards,
+        Nthandizi Police Service Application Team
+        '''
         from_email = 'tawongachauluntha22@gmail.com'
         to_email = user.email 
         send_mail(subject, message, from_email, [to_email])
+    # def send_confirmation_email(self, user):
+    #     subject = 'Nthandizi App Registration Confirmation'
+    #     message = f'Hi {user.fname},\n\nThank you for registering with Nthandizi Police Service Application.\nYour account has been successfully created.\nYou can now Log in with the following details:\n\nFirstname: {user.fname}\n\nLastname: {user.lname}\n\nPhone No: {user.pnumber}\n\nEmail: {user.email}\n\nPassword: {user.password}\n\nOtp: {user.otp}\n\nPlease Remember to change the password after login the one is the default password'
+    #     from_email = 'tawongachauluntha22@gmail.com'
+    #     to_email = user.email 
+    #     send_mail(subject, message, from_email, [to_email])
+    def send_confirmation_sms(self, user):
+        account_sid = 'ACd8a3bc1036a690fdc8e2ff279906294c'
+        auth_token = '6241b58649c185f6300dde770aff394b'
+        twilio_phone_number = '+13609972230'
 
+        client = Client(account_sid, auth_token)
 
-class LoginView(APIView):
-    permission_classes = [permissions.AllowAny]
+        message = client.messages.create(
+            body=f'''
+            Hi {user.fname},
 
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            fname = serializer.validated_data['fname']
-            password = serializer.validated_data['password']
-          
-            try:
-                # Perform login authentication
-                user = User.objects.get(fname=fname, password=password)            
+            Thank you for registering with Nthandizi Police Service Application.
+            Your account has been successfully created.
 
-                # Serialize the user data
-                serializer = UserSerializer(user)  
-              
-                # Retrieve additional user data
-                user_data = {
-                    'uid': user.uid,
-                    'fname': user.fname,
-                    'lname': user.lname,
-                    'password': user.password,
-                    'email': user.email,
-                    'pnumber': user.pnumber,
-                    
-                }
+            You can now Log in with the following details:
 
-                # Authentication successful
-                return Response({'user_data': user_data}, status=status.HTTP_200_OK)
+            User ID: {user.uid}
+            Firstname: {user.fname}
+            Lastname: {user.lname}
+            Phone No: {user.pnumber}
+            Email: {user.email}
+            OTP: {user.otp}
+            Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
 
-            except User.DoesNotExist:
-                # Authentication failed
-                return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            Please Remember to change the password after login; the default password is provided for initial access.
 
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
+            Regards,
+            Nthandizi Police Service Application Team
+            ''',
+            from_=twilio_phone_number,
+            to=user.pnumber  # Use the user's phone number for SMS
+        )
 
-
-class CommunityLeaderLoginView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            fname = serializer.validated_data['fname']
-            password = serializer.validated_data['password']
-
-            try:
-                # Check if the credentials belong to a community leader
-                user = User.objects.get(fname=fname, password=password)
-                if not user.is_community_leader:
-                    return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-                # Serialize the user data
-                serializer = UserSerializer(user)
-                # Retrieve additional user data
-                user_data = {
-                    'uid': user.uid,
-                    'fname': user.fname,
-                    'lname': user.lname,
-                    'password': user.password,
-                    'email': user.email,
-                    'pnumber': user.pnumber,
-                }
-                # Authentication successful
-                return Response({'user_data': user_data}, status=status.HTTP_200_OK)
-
-            except User.DoesNotExist:
-                # Authentication failed
-                return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  # check if email exist and phone no has 10digits
-            # email = serializer.validated_data['email']
-            # phone_number = serializer.validated_data['pnumber']
-
-            # if User.objects.filter(email=email).exists():
-            #     return Response({'message': 'Email already exists. Please use a different email.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # if not re.match(r'^\d{10}$', phone_number):
-            #
+    def validate_password(self, password):
+        # Validate password using regular expressions
+        # Minimum 8 characters, at least one uppercase letter, one lowercase letter, and one digit
+        password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+        return re.match(password_pattern, password)
+    
+    def validate_name(self, name):
+        # Validate name to start with uppercase letter
+        if not name[0].isupper():
+            return False
+        return True
+    
+    def validate_phone_number(self, pnumber):
+       # Validate phone number to start with '+265' and have 13 digits in total
+        return re.match(r'^\+265\d{9}$', pnumber)

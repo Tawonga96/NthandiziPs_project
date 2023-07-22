@@ -25,7 +25,7 @@ class Policeofficer(models.Model):
 
 
 class Policestation(models.Model):
-    psid = models.IntegerField(primary_key=True)
+    psid = models.IntegerField(primary_key=True,auto_created=True)
     ps_name = models.CharField(max_length=35)
 
     class Meta:
@@ -36,7 +36,7 @@ class Subscribe(models.Model):
     subscription_id = models.IntegerField(primary_key=True)
     psid = models.ForeignKey(Policestation, models.DO_NOTHING, db_column='psid')
     community = models.ForeignKey(Community, models.DO_NOTHING)
-    suscribed_on = models.DateTimeField()
+    subscribed_on = models.DateTimeField(auto_now_add=True)
     until = models.DateTimeField(blank=True, null=True)
 
     class Meta:

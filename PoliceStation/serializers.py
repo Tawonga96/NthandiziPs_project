@@ -1,28 +1,32 @@
 from rest_framework import serializers
 from PoliceStation.models import JobPosting, Policeofficer, Policestation, Subscribe
+from Community.serializers import CommunitySerializer
 
-class JobPostingSerializer(serializers.HyperlinkedModelSerializer):
+
+class JobPostingSerializer(serializers.ModelSerializer):
      class Meta:
         model = JobPosting
         fields = ['posting_id', 'pid', 'psid', 'assigned_on']
 
 
-class  PoliceofficerSerializer(serializers.HyperlinkedModelSerializer):
+class  PoliceofficerSerializer(serializers.ModelSerializer):
+
      class Meta:
         model = Policeofficer
         fields = ['pid', 'fname', 'lname']
 
 
-class  PolicestationSerializer(serializers.HyperlinkedModelSerializer):
+class  PolicestationSerializer(serializers.ModelSerializer):
      class Meta:
         model = Policestation
-        fields = ['psid', 'ps_name']
+        fields = ['ps_name']
 
  
 class SubscribeSerializer(serializers.ModelSerializer):
-     class Meta:
-      model = Subscribe
-      fields = ['subcription_id','psid',  'community', 'subscribed_on','until']
+     # until = serializers.DateTimeField(required=False, allow_null=True)
 
-         
-    
+     class Meta:
+          model = Subscribe
+          fields = ['psid', 'community', 'subscribed_on','until']
+
+ 
