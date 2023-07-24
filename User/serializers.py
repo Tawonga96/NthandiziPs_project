@@ -1,13 +1,15 @@
 from rest_framework import serializers
 from User.models import User
-from Community.models import Citizen 
 
+class LoginSerializer(serializers.Serializer):
+    fname = serializers.CharField()
+    password = serializers.CharField()
 
 class UserSerializer(serializers.ModelSerializer):
-    # uid = serializers.IntegerField(read_only=True)  # Set read_only to True
+    # login = LoginSerializer(required=False)
 
     class Meta:   
         model = User
-        fields = ['fname', 'lname', 'pnumber', 'password','email']
+        fields = ['uid','fname', 'lname', 'pnumber', 'password','email','date_joined']
        
 

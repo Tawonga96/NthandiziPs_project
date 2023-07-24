@@ -2,12 +2,11 @@ from django.db import models
 from User.models import User
 
 
-
 # Create your models here.
 class Citizen(models.Model):
     cid = models.OneToOneField(User, models.DO_NOTHING, db_column='cid', primary_key=True, auto_created=True)
     occupation = models.CharField(max_length=35, null=True)
- 
+
     class Meta:
         managed = False
         db_table = 'citizen'
@@ -64,6 +63,67 @@ class Member(models.Model):
     class Meta:
         managed = False
         db_table = 'member'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

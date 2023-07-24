@@ -1,13 +1,21 @@
-from Community.models import Citizen
 import random
 from django.utils import timezone
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password
+import hashlib
+from django.http import JsonResponse
+
 import re
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from User.serializers import *
 from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
+from django.contrib.auth import authenticate
 from User.serializers import UserSerializer
+from User.serializers import LoginSerializer
+from Community.models import *
 from rest_framework.response import Response
 from User.models import User
 from twilio.rest import Client
@@ -25,7 +33,7 @@ class UserList(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    
+
 class UserRegistration(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = UserSerializer
@@ -50,6 +58,9 @@ class UserRegistration(generics.CreateAPIView):
         otp = serializer.validated_data['otp']
         is_active = serializer.validated_data['is_active']
 
+        # Hash the password before saving it to the database
+        # hashed_password = hashlib.sha256(password.encode()).hexdigest()
+      
         # Check if any of the required fields are empty
         if not fname or not lname or not pnumber or not password or not email:
             return Response({'error': 'Please provide values for all required fields.'},
@@ -75,8 +86,8 @@ class UserRegistration(generics.CreateAPIView):
             return Response({'error': 'Invalid email format.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the email already exists in the database
-        if User.objects.filter(email=email).exists():
-            return Response({'error': 'Email already exists. Please use a different email.'}, status=status.HTTP_409_CONFLICT)
+        # if User.objects.filter(email=email).exists():
+        #     return Response({'error': 'Email already exists. Please use a different email.'}, status=status.HTTP_409_CONFLICT)
 
         # Validate the password format using custom password validator
         password = serializer.validated_data['password']
@@ -110,7 +121,7 @@ class UserRegistration(generics.CreateAPIView):
 
         You can now Log in with the following details:
 
-        User ID: {user.uid}
+        UserID: {user.uid}
         Firstname: {user.fname}
         Lastname: {user.lname}
         Phone No: {user.pnumber}
@@ -126,44 +137,6 @@ class UserRegistration(generics.CreateAPIView):
         from_email = 'tawongachauluntha22@gmail.com'
         to_email = user.email 
         send_mail(subject, message, from_email, [to_email])
-    # def send_confirmation_email(self, user):
-    #     subject = 'Nthandizi App Registration Confirmation'
-    #     message = f'Hi {user.fname},\n\nThank you for registering with Nthandizi Police Service Application.\nYour account has been successfully created.\nYou can now Log in with the following details:\n\nFirstname: {user.fname}\n\nLastname: {user.lname}\n\nPhone No: {user.pnumber}\n\nEmail: {user.email}\n\nPassword: {user.password}\n\nOtp: {user.otp}\n\nPlease Remember to change the password after login the one is the default password'
-    #     from_email = 'tawongachauluntha22@gmail.com'
-    #     to_email = user.email 
-    #     send_mail(subject, message, from_email, [to_email])
-    def send_confirmation_sms(self, user):
-        account_sid = 'ACd8a3bc1036a690fdc8e2ff279906294c'
-        auth_token = '6241b58649c185f6300dde770aff394b'
-        twilio_phone_number = '+13609972230'
-
-        client = Client(account_sid, auth_token)
-
-        message = client.messages.create(
-            body=f'''
-            Hi {user.fname},
-
-            Thank you for registering with Nthandizi Police Service Application.
-            Your account has been successfully created.
-
-            You can now Log in with the following details:
-
-            User ID: {user.uid}
-            Firstname: {user.fname}
-            Lastname: {user.lname}
-            Phone No: {user.pnumber}
-            Email: {user.email}
-            OTP: {user.otp}
-            Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
-
-            Please Remember to change the password after login; the default password is provided for initial access.
-
-            Regards,
-            Nthandizi Police Service Application Team
-            ''',
-            from_=twilio_phone_number,
-            to=user.pnumber  # Use the user's phone number for SMS
-        )
 
     def validate_password(self, password):
         # Validate password using regular expressions
@@ -180,3 +153,129 @@ class UserRegistration(generics.CreateAPIView):
     def validate_phone_number(self, pnumber):
        # Validate phone number to start with '+265' and have 13 digits in total
         return re.match(r'^\+265\d{9}$', pnumber)
+    
+class UserLogin(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+
+        if serializer.is_valid():
+            fname = request.data.get('fname')
+            password = request.data.get('password')
+
+            # Validate the request data
+            if not fname or not password:
+                return Response({'error': 'Please provide both fname and password.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Hash the provided password
+            # hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+            try:
+                # Check if the user exists and the password matches
+                user = User.objects.get(fname=fname, password=password)
+
+                # Serialize the user data
+                serializer = UserSerializer(user)
+                user_data = serializer.data
+
+                # Return the user data without the password
+                user_data.pop('password', None)
+
+                return Response({'user_data': user_data}, status=status.HTTP_200_OK)
+
+            except User.DoesNotExist:
+                # Authentication failed
+                return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#     # def send_confirmation_email(self, user):
+#     #     subject = 'Nthandizi App Registration Confirmation'
+#     #     message = f'Hi {user.fname},\n\nThank you for registering with Nthandizi Police Service Application.\nYour account has been successfully created.\nYou can now Log in with the following details:\n\nFirstname: {user.fname}\n\nLastname: {user.lname}\n\nPhone No: {user.pnumber}\n\nEmail: {user.email}\n\nPassword: {user.password}\n\nOtp: {user.otp}\n\nPlease Remember to change the password after login the one is the default password'
+#     #     from_email = 'tawongachauluntha22@gmail.com'
+#     #     to_email = user.email 
+#     #     send_mail(subject, message, from_email, [to_email])
+#     def send_confirmation_sms(self, user):
+#         account_sid = 'ACd8a3bc1036a690fdc8e2ff279906294c'
+#         auth_token = '6241b58649c185f6300dde770aff394b'
+#         twilio_phone_number = '+13609972230'
+
+#         client = Client(account_sid, auth_token)
+
+#         message = client.messages.create(
+#             body=f'''
+#             Hi {user.fname},
+
+#             Thank you for registering with Nthandizi Police Service Application.
+#             Your account has been successfully created.
+
+#             You can now Log in with the following details:
+
+#             User ID: {user.uid}
+#             Firstname: {user.fname}
+#             Lastname: {user.lname}
+#             Phone No: {user.pnumber}
+#             Email: {user.email}
+#             OTP: {user.otp}
+#             Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
+
+#             Please Remember to change the password after login; the default password is provided for initial access.
+
+#             Regards,
+#             Nthandizi Police Service Application Team
+#             ''',
+#             from_=twilio_phone_number,
+#             to=user.pnumber  # Use the user's phone number for SMS
+#         )

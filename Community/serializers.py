@@ -5,6 +5,7 @@ from User.serializers import UserSerializer
 
 
 class CitizenSerializer(serializers.ModelSerializer):
+
        class Meta:
         model = Citizen
         fields = ['cid', 'occupation']

@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from Community.models import Citizen
 from Community.serializers import *
@@ -7,6 +8,7 @@ from django.contrib.auth import authenticate
 from User.models import User
 from User.serializers import UserSerializer
 from User.models import User
+from django.core.mail import send_mail
 from rest_framework.authtoken.models import Token
 import random
 
@@ -92,15 +94,11 @@ class CitizenRegistration(generics.CreateAPIView):
         # Retrieve the User object by User ID
         try:
             user = User.objects.get(pk=cid)
+            # user = User.objects.get(uid=cid)
+
         except User.DoesNotExist:
             return Response({"error": "User with the provided ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if a Citizen with the provided User (cid) already exists
-        existing_citizen = Citizen.objects.filter(cid=user).first()
-        if existing_citizen:
-            # If Citizen already exists, return a response indicating that the user is already registered as a Citizen
-            return Response({"error": "User with the provided ID is already registered as a Citizen."},
-                            status=status.HTTP_400_BAD_REQUEST)
 
          # Check if a Citizen with the provided User (cid) already exists
         existing_citizen = Citizen.objects.filter(cid=user).first()
@@ -112,8 +110,38 @@ class CitizenRegistration(generics.CreateAPIView):
         # Create the Citizen object with the provided User and occupation
         citizen = Citizen.objects.create(cid=user, occupation=occupation)
 
+        # citizen = Citizen.objects.get(pk=cid)
+        # Get the primary key of the created Citizen object
+        citizen_pk = citizen.pk
+
+        # Send the confirmation email
+        self.send_confirmation_email_citizen(citizen,user, occupation,citizen_pk)
+
         # Return a response with the created citizen data
         return Response(CitizenSerializer(citizen).data, status=status.HTTP_201_CREATED)
+    
+    def send_confirmation_email_citizen(self,citizen, user, occupation, citizen_pk):
+        subject = 'Nthandizi App Registration Confirmation'
+        message = f'''
+        Hi {user.fname},
+
+        Thank you for registering with Nthandizi Police Service Application.
+        Your account has been successfully created.
+
+        User ID: {user.uid}
+        Citizen ID: {citizen.cid}
+        Citizen ID: {citizen_pk}
+
+        Occupation: {occupation}
+
+        Please Remember to change the password after login; the default password is provided for initial access.
+
+        Regards,
+        Nthandizi Police Service Application Team
+        '''
+        from_email = 'tawongachauluntha22@gmail.com'
+        to_email = user.email
+        send_mail(subject, message, from_email, [to_email])
     
 class CommunityLeaderDetail(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
