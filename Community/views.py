@@ -1,3 +1,4 @@
+import re
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from Community.models import Citizen
@@ -7,7 +8,6 @@ from Community.models import Community, Member
 from django.contrib.auth import authenticate
 from User.models import User
 from User.serializers import UserSerializer
-from User.models import User
 from django.core.mail import send_mail
 from rest_framework.authtoken.models import Token
 import random
@@ -87,40 +87,50 @@ class CitizenRegistration(generics.CreateAPIView):
         cid = request.data.get('cid')
         occupation = request.data.get('occupation')
 
+        # # Validate the format of cid (6-character alphanumeric)
+        if not re.match(r'^[a-zA-Z0-9]{6}$', cid):
+            return Response({"error": "Please provide a valid 'citizen ID' (6-character alphanumeric)."}, status=status.HTTP_400_BAD_REQUEST)
+
+
          # Check if cid and occupation are provided and not empty
         if not cid or not occupation:
             return Response({"error": "Please provide both 'citizen ID' and 'occupation' values."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Retrieve the User object by User ID
         try:
-            user = User.objects.get(pk=cid)
+            # #user = User.objects.get(pk=cid)
             # user = User.objects.get(uid=cid)
+            user = User.objects.get(uid=str(cid))  # Convert cid to string for lookup
+
 
         except User.DoesNotExist:
             return Response({"error": "User with the provided ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-         # Check if a Citizen with the provided User (cid) already exists
-        existing_citizen = Citizen.objects.filter(cid=user).first()
+        # Check if a Citizen with the provided User (cid) already exists
+
+        existing_citizen = Citizen.objects.filter(user=user).first()
+        # existing_citizen = Citizen.objects.filter(cid__uid=cid).first()
+
         if existing_citizen:
             # If Citizen already exists, return a response indicating that the user is already registered as a Citizen
             return Response({"error": "User with the provided ID is already registered as a Citizen."},
                             status=status.HTTP_400_BAD_REQUEST)
         
         # Create the Citizen object with the provided User and occupation
-        citizen = Citizen.objects.create(cid=user, occupation=occupation)
+        citizen = Citizen.objects.create(cid=cid, occupation=occupation ,user=user)
 
         # citizen = Citizen.objects.get(pk=cid)
         # Get the primary key of the created Citizen object
-        citizen_pk = citizen.pk
+        # citizen_pk = citizen.pk
 
         # Send the confirmation email
-        self.send_confirmation_email_citizen(citizen,user, occupation,citizen_pk)
+        self.send_confirmation_email_citizen(user,citizen)
 
         # Return a response with the created citizen data
         return Response(CitizenSerializer(citizen).data, status=status.HTTP_201_CREATED)
     
-    def send_confirmation_email_citizen(self,citizen, user, occupation, citizen_pk):
+    def send_confirmation_email_citizen(self, user, citizen):
         subject = 'Nthandizi App Registration Confirmation'
         message = f'''
         Hi {user.fname},
@@ -129,12 +139,14 @@ class CitizenRegistration(generics.CreateAPIView):
         Your account has been successfully created.
 
         User ID: {user.uid}
-        Citizen ID: {citizen.cid}
-        Citizen ID: {citizen_pk}
+        First Name: {user.fname}
+        Last Name: {user.lname}
+        Phone Number: {user.pnumber}
+        Email: {user.email}
+        Occupation: {citizen.occupation} 
+        Date Joined {user.date_joined}
 
-        Occupation: {occupation}
-
-        Please Remember to change the password after login; the default password is provided for initial access.
+        We look forward to your active participation in making our community a safer place.
 
         Regards,
         Nthandizi Police Service Application Team
@@ -250,29 +262,32 @@ class MemberCreate(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         # Extract cid and community_id from the request data using get() method
-        cid_pk = request.data.get('cid')
+        cid = request.data.get('cid')
         community_id_pk = request.data.get('community_id')
         citizen_typ = request.data.get('citizen_typ', 'Member')  # Retrieve citizen_typ from request data
 
         # Check if both cid and community_id are provided and not empty
-        if not cid_pk or not community_id_pk:
+        if not cid or not community_id_pk:
             return Response({'error': 'Please provide both "Citizen ID" and "Community ID" values.'},
                             status=status.HTTP_400_BAD_REQUEST)
         
         # Check if the combination of cid and community_id already exists in the database
-        existing_member = Member.objects.filter(cid=cid_pk, community_id=community_id_pk).first()
+        existing_member = Member.objects.filter(cid=cid, community_id=community_id_pk).first()
         if existing_member:
             return Response({'error': 'A member with the provided "ID" and "community_id" already exists.'},
                             status=status.HTTP_409_CONFLICT)
 
 
-        # Get the Citizen and Community instances based on their primary keys
+        # Get the Citizen instance based on the provided cid
         try:
-            cid_instance = Citizen.objects.get(pk=cid_pk)
+            # cid_instance = Citizen.objects.get(pk=cid_pk)
+            cid_instance = Citizen.objects.get(cid=cid)
+
         except Citizen.DoesNotExist:
             return Response({'error': 'Citizen with the provided primary key does not exist.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        # Get the Community instance based on the provided community_id_pk
         try:
             community_instance = Community.objects.get(pk=community_id_pk)
         except Community.DoesNotExist:
@@ -283,7 +298,7 @@ class MemberCreate(generics.CreateAPIView):
         # Create the Member object using the instances of Citizen and Community
         member = Member.objects.create(
             cid=cid_instance,
-            community_id=community_instance,
+            community_id=community_instance.pk,
             citizen_typ=citizen_typ
         )
         # Return a response with the created member data

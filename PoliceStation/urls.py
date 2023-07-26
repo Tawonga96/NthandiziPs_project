@@ -18,7 +18,7 @@ urlpatterns =[
     # Police Officer URLs
     path('Policeofficer/<int:pk>/', views.PoliceofficerDetail.as_view()),
     path('Policeofficer/', views.PoliceofficerList.as_view()),
-    path('Create_policeofficer/', views.PoliceofficerCreate.as_view(), name='create-police-officer'),
+    path('register_policeofficer/', views.PoliceofficerCreate.as_view(), name='create-police-officer'),
 
     # Subscribe URLs
     path('Subscriber/<int:pk>/', views.SubscribeDetail.as_view()),

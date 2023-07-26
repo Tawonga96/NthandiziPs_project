@@ -5,7 +5,7 @@ from rest_framework import generics, permissions,status
 from rest_framework.response import Response
 from PoliceStation.models import Policeofficer
 from PoliceStation.serializers import PoliceofficerSerializer
-
+from django.core.mail import send_mail
 from User.models import User  # Import User model here
 
 # Create your views here.
@@ -42,15 +42,25 @@ class PoliceofficerCreate(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         # Extract the data from the request
-        fname = request.data.get('fname')
-        lname = request.data.get('lname')
-        pid = request.data.get('uid')  # Assuming user_id is provided in the request data
+        position = request.data.get('position')
+        pid = request.data.get('pid')  # Assuming user_id is provided in the request data
+
+        # Check if pid and position are provided and not empty
+        if not pid or not position:
+            return Response({"error": "Please provide both 'user ID' and 'position' values."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the User instance for the provided user_id
         try:
-            user= User.objects.get(pk=pid)
+            user = User.objects.get(pk=pid)
         except User.DoesNotExist:
             return Response({'error': 'User with the provided primary key does not exist.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if a Policeofficer with the provided User (pid) already exists
+        existing_officer = Policeofficer.objects.filter(pid=user).first()
+        if existing_officer:
+            # If Policeofficer already exists, return a response indicating that the user is already registered as a Police Officer
+            return Response({"error": "User with the provided ID is already registered as a Police Officer."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Perform any additional validation or logic here before creating the Police Officer
@@ -58,15 +68,42 @@ class PoliceofficerCreate(generics.CreateAPIView):
         # Create the Police Officer object using the provided data and the User instance
         police_officer = Policeofficer.objects.create(
             pid=user,
-            fname=fname,
-            lname=lname
+            position=position,
         )
+
+        # Send the confirmation email for Police Officer registration
+        self.send_confirmation_email_police_officer(user, police_officer)
 
         # Return a response with the created Police Officer data
         data = {
             'police_officer': PoliceofficerSerializer(police_officer).data,
         }
         return Response(data, status=status.HTTP_201_CREATED)
+
+    def send_confirmation_email_police_officer(self, user, police_officer):
+        subject = 'Nthandizi App Police Officer Registration Confirmation'
+        message = f'''
+        Hi {user.fname},
+
+        Thank you for registering as a Police Officer with Nthandizi Police Service Application.
+        
+        Police Officer Details:
+        User ID: {user.uid}
+        First Name: {user.fname}
+        Last Name: {user.lname}
+        Phone Number: {user.pnumber}
+        Email: {user.email}
+        Position: {police_officer.position}
+        Date Joined {user.date_joined}
+
+        We appreciate your commitment to ensuring the safety and security of our community.
+
+        Regards,
+        Nthandizi Police Service Application Team
+        '''
+        from_email = 'tawongachauluntha22@gmail.com'  # Replace with your email address
+        to_email = user.email
+        send_mail(subject, message, from_email, [to_email])
 
 
 

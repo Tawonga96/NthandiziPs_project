@@ -7,7 +7,6 @@ urlpatterns=[
     path('Community/', views.CommunityList.as_view()),
     path('CommunityCreate/', views.CommunityCreate.as_view(), name='community-create'),
 
-
     path('Citizen/<int:pk>/', views.CitizenDetail.as_view()),
     path('Citizen/', views.CitizenList.as_view()),
     path('CitizenRegister/', views.CitizenRegistration.as_view(), name='citizen-registration'),

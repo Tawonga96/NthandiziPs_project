@@ -7,5 +7,4 @@ urlpatterns =[
     path('<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
     path('register/', views.UserRegistration.as_view(), name='user-registration'),
     path('login/',views.UserLogin.as_view(), name='user-login'),
-
 ]

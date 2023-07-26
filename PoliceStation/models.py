@@ -16,8 +16,8 @@ class JobPosting(models.Model):
 
 class Policeofficer(models.Model):
     pid = models.OneToOneField(User, models.DO_NOTHING, db_column='pid', primary_key=True)
-    fname = models.CharField(max_length=35)
-    lname = models.CharField(max_length=35)
+    position = models.CharField(max_length=35)
+    # lname = models.CharField(max_length=35)
 
     class Meta:
         managed = False

@@ -14,7 +14,7 @@ class CitizenSerializer(serializers.ModelSerializer):
 class CommunitySerializer(serializers.ModelSerializer):
      class Meta:
         model = Community
-        fields = ['district', 'comm_name','area','date_added']
+        fields = ['community_id','district', 'comm_name','area','date_added']
 
 
 class CommunityLeaderSerializer(serializers.ModelSerializer):
@@ -39,4 +39,4 @@ class HousememberSerializer(serializers.ModelSerializer):
 class MemberSerializer(serializers.ModelSerializer):
      class Meta:
         model = Member
-        fields = ['cid','community_id','date_joined','left_on','citizen_typ']
+        fields = ['cid','community','date_joined','left_on','citizen_typ']

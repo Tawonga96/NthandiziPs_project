@@ -13,7 +13,7 @@ class  PoliceofficerSerializer(serializers.ModelSerializer):
 
      class Meta:
         model = Policeofficer
-        fields = ['pid', 'fname', 'lname']
+        fields = ['pid', 'position']
 
 
 class  PolicestationSerializer(serializers.ModelSerializer):

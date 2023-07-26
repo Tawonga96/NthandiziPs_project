@@ -9,6 +9,7 @@ import re
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from Nthandizi_ps import settings
 from User.serializers import *
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -105,38 +106,67 @@ class UserRegistration(generics.CreateAPIView):
             is_active=is_active,
         )
 
+        ## Generate the uid for the user
+        # uid = generate_random_uid()
+        # user.uid = uid
+        # user.save()
+
         # Send the confirmation email to the user
-        self.send_confirmation_email(user)
+        self.send_confirmation_sms(user)
 
         # Return a response with the created user data
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
-    def send_confirmation_email(self, user):
-        subject = 'Nthandizi App Registration Confirmation'
-        message = f'''
+        
+    def send_confirmation_sms(self, user):
+        account_sid= settings.TWILIO_ACCOUNT_SID
+        auth_token= settings.TWILIO_AUTH_TOKEN 
+        twilio_phone =settings.TWILIO_PHONE_NUMBER
+
+        client = Client(account_sid, auth_token)
+
+        sms_message = f'''
         Hi {user.fname},
 
-        Thank you for registering with Nthandizi Police Service Application.
-        Your account has been successfully created.
+        Your User ID is: {user.uid}.
 
-        You can now Log in with the following details:
-
-        UserID: {user.uid}
-        Firstname: {user.fname}
-        Lastname: {user.lname}
-        Phone No: {user.pnumber}
-        Email: {user.email}
-        OTP: {user.otp}
-        Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
-
-        Please Remember to change the password after login; the default password is provided for initial access.
-
-        Regards,
-        Nthandizi Police Service Application Team
+        Now, you can proceed with the registration and pass the ID to your community leader to add you to your community
+        
         '''
-        from_email = 'tawongachauluntha22@gmail.com'
-        to_email = user.email 
-        send_mail(subject, message, from_email, [to_email])
+        to_phone_number = user.pnumber
+
+        client.messages.create(
+            body=sms_message,
+            from_=twilio_phone,
+            to=to_phone_number
+        )
+    
+    # def send_confirmation_email(self, user):
+    #     subject = 'Nthandizi App Registration Confirmation'
+    #     message = f'''
+    #     Hi {user.fname},
+
+    #     Thank you for registering with Nthandizi Police Service Application.
+    #     Your account has been successfully created.
+
+    #     You can now Log in with the following details:
+
+    #     UserID: {user.uid}
+    #     Firstname: {user.fname}
+    #     Lastname: {user.lname}
+    #     Phone No: {user.pnumber}
+    #     Email: {user.email}
+    #     OTP: {user.otp}
+    #     Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
+
+    #     Please Remember to change the password after login; the default password is provided for initial access.
+
+    #     Regards,
+    #     Nthandizi Police Service Application Team
+    #     '''
+    #     from_email = 'tawongachauluntha22@gmail.com'
+    #     to_email = user.email 
+    #     send_mail(subject, message, from_email, [to_email])
 
     def validate_password(self, password):
         # Validate password using regular expressions

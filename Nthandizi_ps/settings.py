@@ -111,6 +111,10 @@ EMAIL_USE_TLS = True
 # DEFAULT_FROM_EMAIL = 'tawahcngwira96@gmail.com'  # Replace with your email address
 
 
+# TWILIO CONFIGURATION
+TWILIO_ACCOUNT_SID = 'ACd8a3bc1036a690fdc8e2ff279906294c'
+TWILIO_AUTH_TOKEN = '7abc53f634083e8d28c16cc4f3c5954b'
+TWILIO_PHONE_NUMBER = '+13609972230'
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 

@@ -1,11 +1,13 @@
 from django.db import models
-from User.models import User
+from User.models import User, generate_random_uid
 
 
 # Create your models here.
 class Citizen(models.Model):
-    cid = models.OneToOneField(User, models.DO_NOTHING, db_column='cid', primary_key=True, auto_created=True)
+    # cid = models.OneToOneField(User, models.DO_NOTHING, db_column='cid', primary_key=True, auto_created=True)
+    cid = models.CharField(primary_key=True, default=generate_random_uid, unique=True, editable=False, max_length=6)#
     occupation = models.CharField(max_length=35, null=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='citizen') #
 
     class Meta:
         managed = False
@@ -54,8 +56,8 @@ class Housemember(models.Model):
 
 class Member(models.Model):
     mid = models.IntegerField(primary_key=True)
-    cid = models.ForeignKey(Citizen, models.DO_NOTHING, db_column='cid')
-    community_id = models.ForeignKey(Community, models.DO_NOTHING, db_column='community_id')
+    cid = models.ForeignKey(Citizen, models.DO_NOTHING, db_column='cid', to_field='cid')
+    community = models.ForeignKey(Community, models.DO_NOTHING, db_column='community_id')
     date_joined = models.DateTimeField(auto_now_add=True)
     left_on = models.DateTimeField(blank=True, null=True)
     citizen_typ = models.CharField(max_length=35)
