@@ -1,14 +1,14 @@
 from rest_framework import serializers
 from Community.models import Citizen, Community, CommunityLeader, Household, Housemember, Member
 from User.models import User
-from User.serializers import UserSerializer
+from Community.serializers import *
 
 
 class CitizenSerializer(serializers.ModelSerializer):
 
-       class Meta:
+      class Meta:
         model = Citizen
-        fields = ['cid', 'occupation']
+        fields = ['cid', 'occupation','user']
 
 
 class CommunitySerializer(serializers.ModelSerializer):
@@ -37,6 +37,7 @@ class HousememberSerializer(serializers.ModelSerializer):
         
 
 class MemberSerializer(serializers.ModelSerializer):
+     
      class Meta:
         model = Member
-        fields = ['cid','community','date_joined','left_on','citizen_typ']
+        fields = ['cid','community','is_active','date_joined','left_on','citizen_typ']

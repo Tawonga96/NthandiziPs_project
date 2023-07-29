@@ -19,7 +19,7 @@ class  PoliceofficerSerializer(serializers.ModelSerializer):
 class  PolicestationSerializer(serializers.ModelSerializer):
      class Meta:
         model = Policestation
-        fields = ['ps_name']
+        fields = ['psid','ps_name']
 
  
 class SubscribeSerializer(serializers.ModelSerializer):

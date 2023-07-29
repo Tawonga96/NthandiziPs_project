@@ -1,22 +1,18 @@
 import random
-from django.utils import timezone
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.hashers import check_password
-import hashlib
-from django.http import JsonResponse
-
 import re
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from Cases.serializers import MemberSerializer
 from Nthandizi_ps import settings
 from User.serializers import *
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
-from django.contrib.auth import authenticate
-from User.serializers import UserSerializer
-from User.serializers import LoginSerializer
+
+from User.serializers import UserSerializer, LoginSerializer
+
 from Community.models import *
+# from Community.models import Member, Citizen  # Import the Member and Citizen models
 from rest_framework.response import Response
 from User.models import User
 from twilio.rest import Client
@@ -48,7 +44,7 @@ class UserRegistration(generics.CreateAPIView):
 
         # Set the OTP and is_active in the validated data
         serializer.validated_data['otp'] = otp
-        serializer.validated_data['is_active'] = 1  # Set is_active to 1
+        serializer.validated_data['is_active'] = False  # Set is_active to 1
 
         # Extract validated data from the serializer
         fname = serializer.validated_data['fname']
@@ -61,30 +57,27 @@ class UserRegistration(generics.CreateAPIView):
 
         # Hash the password before saving it to the database
         # hashed_password = hashlib.sha256(password.encode()).hexdigest()
-      
+
         # Check if any of the required fields are empty
         if not fname or not lname or not pnumber or not password or not email:
             return Response({'error': 'Please provide values for all required fields.'},
                             status=status.HTTP_400_BAD_REQUEST)
-       
+
         # Validate fname and lname format using custom validators
         fname = serializer.validated_data['fname']
-        lname = serializer.validated_data['lname']
+
         if not self.validate_name(fname):
-            return Response({'error': 'First name must start with an uppercase letter.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not self.validate_name(lname):
-            return Response({'error': 'Last name must start with an uppercase letter.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'First name must start with an uppercase letter.'}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         # Validate the phone number format using a custom method
         pnumber = serializer.validated_data['pnumber']
         if not self.validate_phone_number(pnumber):
-            return Response({'error': 'Phone number must have 13 digits and start with +265.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Phone number must have 13 digits and start with +265.'}, status=status.HTTP_411_LENGTH_REQUIRED)
 
         try:
             validate_email(email)
         except ValidationError:
-            return Response({'error': 'Invalid email format.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Invalid email format.'}, status=status.HTTP_403_FORBIDDEN)
 
         # Check if the email already exists in the database
         # if User.objects.filter(email=email).exists():
@@ -93,7 +86,7 @@ class UserRegistration(generics.CreateAPIView):
         # Validate the password format using custom password validator
         password = serializer.validated_data['password']
         if not self.validate_password(password):
-            return Response({'error': 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Validate with minimum 6 characters, one number, one symbol.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Create the user object
         user = User.objects.create(
@@ -112,7 +105,10 @@ class UserRegistration(generics.CreateAPIView):
         # user.save()
 
         # Send the confirmation email to the user
-        self.send_confirmation_sms(user)
+        # Twilio account
+        # self.send_confirmation_sms(user)
+        # Email account
+        self.send_confirmation_email(user)
 
         # Return a response with the created user data
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
@@ -140,38 +136,30 @@ class UserRegistration(generics.CreateAPIView):
             from_=twilio_phone,
             to=to_phone_number
         )
+
     
-    # def send_confirmation_email(self, user):
-    #     subject = 'Nthandizi App Registration Confirmation'
-    #     message = f'''
-    #     Hi {user.fname},
+    def send_confirmation_email(self, user):
+        subject = 'Nthandizi App Registration Confirmation'
+        message = f'''
+        Hi {user.fname},
 
-    #     Thank you for registering with Nthandizi Police Service Application.
-    #     Your account has been successfully created.
+        Your User ID is: {user.uid}.
 
-    #     You can now Log in with the following details:
+        Now, you can proceed with the registration and pass the UserID to your community leader to activate this account
+        
+        Regards,
+        Nthandizi Police Service Application Team
 
-    #     UserID: {user.uid}
-    #     Firstname: {user.fname}
-    #     Lastname: {user.lname}
-    #     Phone No: {user.pnumber}
-    #     Email: {user.email}
-    #     OTP: {user.otp}
-    #     Date Joined: {user.date_joined.strftime("%Y-%m-%d %H:%M:%S")}
+        '''
+        from_email = 'tawongachauluntha22@gmail.com'
+        to_email = user.email 
+        send_mail(subject, message, from_email, [to_email])
 
-    #     Please Remember to change the password after login; the default password is provided for initial access.
-
-    #     Regards,
-    #     Nthandizi Police Service Application Team
-    #     '''
-    #     from_email = 'tawongachauluntha22@gmail.com'
-    #     to_email = user.email 
-    #     send_mail(subject, message, from_email, [to_email])
 
     def validate_password(self, password):
         # Validate password using regular expressions
-        # Minimum 8 characters, at least one uppercase letter, one lowercase letter, and one digit
-        password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
+        # Minimum 6 characters, one number, one symbol
+        password_pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{6,}$"
         return re.match(password_pattern, password)
     
     def validate_name(self, name):
@@ -183,43 +171,129 @@ class UserRegistration(generics.CreateAPIView):
     def validate_phone_number(self, pnumber):
        # Validate phone number to start with '+265' and have 13 digits in total
         return re.match(r'^\+265\d{9}$', pnumber)
-    
+
+
+
+
+
+
+
+
+
+
+
+
 class UserLogin(APIView):
     permission_classes = [permissions.AllowAny]
-    
-    def post(self, request):
+
+    def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
 
         if serializer.is_valid():
-            fname = request.data.get('fname')
-            password = request.data.get('password')
-
-            # Validate the request data
-            if not fname or not password:
-                return Response({'error': 'Please provide both fname and password.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Hash the provided password
-            # hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            fname = serializer.validated_data.get('fname')
+            password = serializer.validated_data.get('password')
 
             try:
-                # Check if the user exists and the password matches
-                user = User.objects.get(fname=fname, password=password)
-
-                # Serialize the user data
-                serializer = UserSerializer(user)
-                user_data = serializer.data
-
-                # Return the user data without the password
-                user_data.pop('password', None)
-
-                return Response({'user_data': user_data}, status=status.HTTP_200_OK)
-
+                user = User.objects.get(fname=fname)
             except User.DoesNotExist:
-                # Authentication failed
-                return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({'error': 'User with the provided First Name does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+            if user.password != password:
+                return Response({'error': 'Invalid password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Check if the user is active
+            if not user.is_active:
+                return Response({'message': 'Your account is not yet activated.'}, status=status.HTTP_403_FORBIDDEN)
+
+            user_data = UserSerializer(user)
+            user_data.data.pop('password', None)
+
+            return Response({'message': 'Authentication successful.', 'user_data': user_data.data}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+
+
+
+
+
+
+
+class CommunityLeaderLogin(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+
+        if serializer.is_valid():
+            fname = serializer.validated_data.get('fname')
+            password = serializer.validated_data.get('password')
+
+            try:
+                user = User.objects.get(fname=fname)
+            except User.DoesNotExist:
+                return Response({'error': 'User with the provided First Name does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+            if user.password != password:
+                return Response({'error': 'Invalid password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Check if the user is active
+            if not user.is_active:
+                return Response({'message': 'Your account is not yet activated.'}, status=status.HTTP_403_FORBIDDEN)
+
+            # Check if the user is a community leader by retrieving the Member instance
+            try:
+                member = Member.objects.get(cid=user.citizen.cid)
+            except Member.DoesNotExist:
+                return Response({'error': 'User is not a community leader.'}, status=status.HTTP_403_FORBIDDEN)
+
+            if member.citizen_typ != 'Leader':
+                return Response({'error': 'User is not a community leader.'}, status=status.HTTP_403_FORBIDDEN)
+
+            user_data = UserSerializer(user)
+            user_data.data.pop('password', None)
+
+            return Response({'message': 'Authentication successful.', 'user_data': user_data.data}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class AccountActivation(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        # Extract uid from the request data using get() method
+        uid = request.data.get('uid')
+
+        # Check if uid is provided and not empty
+        if not uid:
+            return Response({'error': 'Please provide the "uid" value.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve the User object by uid
+        try:
+            user = User.objects.get(uid=uid)
+        except User.DoesNotExist:
+            return Response({'error': 'User with the provided UID does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the user account is already active
+        if user.is_active:
+            return Response({'message': 'User account is already activated.'}, status=status.HTTP_200_OK)
+
+        # Activate the user account by setting is_active to True
+        user.is_active = True
+        user.save()
+
+        # Serialize the user data
+        user_serializer = UserSerializer(user)
+
+        # Return a response with the user details and a success message
+        return Response({'message': 'User account has been activated.', 'user': user_serializer.data}, status=status.HTTP_200_OK)
+
+
+
 
 
 

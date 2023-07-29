@@ -87,48 +87,61 @@ class CitizenRegistration(generics.CreateAPIView):
         cid = request.data.get('cid')
         occupation = request.data.get('occupation')
 
-        # # Validate the format of cid (6-character alphanumeric)
+        # Validate the format of cid (6-character alphanumeric)
         if not re.match(r'^[a-zA-Z0-9]{6}$', cid):
-            return Response({"error": "Please provide a valid 'citizen ID' (6-character alphanumeric)."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Please provide a valid UserID"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
+        # Check if cid and comm_name are provided and not empty
+        # if not cid:
+        #     return Response({"error": "Please provide a UserID"}, status=status.HTTP_400_BAD_REQUEST)
 
-         # Check if cid and occupation are provided and not empty
+        # if not comm_name:
+        #     return Response({"error": "Please provide a 'community name'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if cid and occupation are provided and not empty
         if not cid or not occupation:
-            return Response({"error": "Please provide both 'citizen ID' and 'occupation' values."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Please provide both UserID and 'occupation' values."}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         # Retrieve the User object by User ID
         try:
-            # #user = User.objects.get(pk=cid)
-            # user = User.objects.get(uid=cid)
             user = User.objects.get(uid=str(cid))  # Convert cid to string for lookup
-
-
         except User.DoesNotExist:
             return Response({"error": "User with the provided ID does not exist."}, status=status.HTTP_400_BAD_REQUEST)
 
-
         # Check if a Citizen with the provided User (cid) already exists
-
         existing_citizen = Citizen.objects.filter(user=user).first()
-        # existing_citizen = Citizen.objects.filter(cid__uid=cid).first()
-
         if existing_citizen:
             # If Citizen already exists, return a response indicating that the user is already registered as a Citizen
-            return Response({"error": "User with the provided ID is already registered as a Citizen."},
-                            status=status.HTTP_400_BAD_REQUEST)
-        
-        # Create the Citizen object with the provided User and occupation
-        citizen = Citizen.objects.create(cid=cid, occupation=occupation ,user=user)
+            return Response({"error": "User with the provided ID is already registered"},
+                            status=status.HTTP_409_CONFLICT)
 
-        # citizen = Citizen.objects.get(pk=cid)
-        # Get the primary key of the created Citizen object
-        # citizen_pk = citizen.pk
+        # Create the Citizen object with the provided User and occupation
+        citizen = Citizen.objects.create(cid=cid, occupation=occupation, user=user)
+
+        # Create the Member object using the provided cid and comm_name
+        comm_name = request.data.get('comm_name')
+        citizen_typ = 'Member'  # Assuming you want to set a default value for citizen_typ
+
+        # Check if comm_name is provided
+        if not comm_name:
+           return Response({'error': 'Please provide the name of the community.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #if comm_name:
+        # Get the Community instance based on the provided comm_name
+        try:
+            community_instance = Community.objects.get(comm_name=comm_name)
+        except Community.DoesNotExist:
+            return Response({'error': 'Community with the provided name does not exist.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Create the Member object using the instances of Citizen and Community
+        member = Member.objects.create(cid=citizen, community=community_instance, citizen_typ=citizen_typ)
 
         # Send the confirmation email
-        self.send_confirmation_email_citizen(user,citizen)
+        self.send_confirmation_email_citizen(user, citizen)
 
         # Return a response with the created citizen data
-        return Response(CitizenSerializer(citizen).data, status=status.HTTP_201_CREATED)
+        return Response(CitizenSerializer(citizen).data, status=status.HTTP_201_CREATED)  
     
     def send_confirmation_email_citizen(self, user, citizen):
         subject = 'Nthandizi App Registration Confirmation'
@@ -216,8 +229,6 @@ class CommunityLeaderCreate(generics.CreateAPIView):
         return Response(CommunityLeaderSerializer(community_leader).data, status=status.HTTP_201_CREATED)
 
 
-
-
 class HouseholdDetail(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = Community.objects.all()
@@ -241,9 +252,6 @@ class HousememberList(generics.ListAPIView):
     serializer_class = HousememberSerializer
 
 
-
-
-
 class MemberDetail(generics.RetrieveAPIView):
     permission_classes = [permissions.AllowAny]
     queryset = Community.objects.all()
@@ -263,18 +271,18 @@ class MemberCreate(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         # Extract cid and community_id from the request data using get() method
         cid = request.data.get('cid')
-        community_id_pk = request.data.get('community_id')
+        comm_name = request.data.get('comm_name')
         citizen_typ = request.data.get('citizen_typ', 'Member')  # Retrieve citizen_typ from request data
 
         # Check if both cid and community_id are provided and not empty
-        if not cid or not community_id_pk:
+        if not cid or not comm_name:
             return Response({'error': 'Please provide both "Citizen ID" and "Community ID" values.'},
                             status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if the combination of cid and community_id already exists in the database
-        existing_member = Member.objects.filter(cid=cid, community_id=community_id_pk).first()
+       # Check if the combination of cid and comm_name already exists in the database
+        existing_member = Member.objects.filter(cid=cid, community__comm_name=comm_name).first()
         if existing_member:
-            return Response({'error': 'A member with the provided "ID" and "community_id" already exists.'},
+            return Response({'error': 'A member with the provided "ID" and "Community Name" already exists.'},
                             status=status.HTTP_409_CONFLICT)
 
 
@@ -287,18 +295,18 @@ class MemberCreate(generics.CreateAPIView):
             return Response({'error': 'Citizen with the provided primary key does not exist.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the Community instance based on the provided community_id_pk
+        # Get the Community instance based on the provided comm_name
         try:
-            community_instance = Community.objects.get(pk=community_id_pk)
+            community_instance = Community.objects.get(comm_name=comm_name)
         except Community.DoesNotExist:
-            return Response({'error': 'Community with the provided primary key does not exist.'},
+            return Response({'error': 'Community with the provided name does not exist.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
 
         # Create the Member object using the instances of Citizen and Community
         member = Member.objects.create(
             cid=cid_instance,
-            community_id=community_instance.pk,
+            community=community_instance,
             citizen_typ=citizen_typ
         )
         # Return a response with the created member data

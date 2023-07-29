@@ -16,7 +16,7 @@ class User(models.Model):
     password = models.CharField(max_length=50, null=True)
     email = models.CharField(max_length=50, blank=True, null=True)
     otp = models.BigIntegerField()
-    is_active = models.IntegerField()
+    is_active = models.BooleanField()
     date_joined = models.DateTimeField(auto_now_add=True)
 
     class Meta:
