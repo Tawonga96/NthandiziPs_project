@@ -6,14 +6,14 @@ from Community.serializers import CommunitySerializer
 class JobPostingSerializer(serializers.ModelSerializer):
      class Meta:
         model = JobPosting
-        fields = ['posting_id', 'pid', 'psid', 'assigned_on']
+        fields = ['pid', 'psid', 'assigned_on']
 
 
 class  PoliceofficerSerializer(serializers.ModelSerializer):
 
      class Meta:
         model = Policeofficer
-        fields = ['pid', 'position']
+        fields = ['pid', 'position', 'user']
 
 
 class  PolicestationSerializer(serializers.ModelSerializer):

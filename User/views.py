@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from Cases.serializers import MemberSerializer
 from Nthandizi_ps import settings
+from PoliceStation.models import *
 from User.serializers import *
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -30,7 +31,7 @@ class UserList(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-
+# USER REGISTRATION 
 class UserRegistration(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = UserSerializer
@@ -182,7 +183,7 @@ class UserRegistration(generics.CreateAPIView):
 
 
 
-
+# USER / MEMBER LOGIN LOGIC
 class UserLogin(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -220,7 +221,7 @@ class UserLogin(APIView):
 
 
 
-
+# COMMUNITY LEADER LOGIN LOGIC
 class CommunityLeaderLogin(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -260,7 +261,45 @@ class CommunityLeaderLogin(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+# POLICE OFFICER LOGIN LOGIC
+class PoliceOfficerLogin(APIView):
+    permission_classes = [permissions.AllowAny]
 
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+
+        if serializer.is_valid():
+            fname = serializer.validated_data.get('fname')
+            password = serializer.validated_data.get('password')
+
+            try:
+                user = User.objects.get(fname=fname)
+            except User.DoesNotExist:
+                return Response({'error': 'User with the provided First Name does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if the user is a police officer by retrieving the PoliceOfficer instance
+            try:
+                police_officer = Policeofficer.objects.get(pid=user.policeofficer.pid)
+            except Policeofficer.DoesNotExist:
+                return Response({'error': 'User is not a police officer.'}, status=status.HTTP_403_FORBIDDEN)
+
+            # Check if the user's password matches
+            if user.password != password:
+                return Response({'error': 'Invalid password.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Check if the user is active
+            if not user.is_active:
+                return Response({'message': 'Your account is not yet activated.'}, status=status.HTTP_403_FORBIDDEN)
+
+            user_data = UserSerializer(user)
+            user_data.data.pop('password', None)
+
+            return Response({'message': 'Authentication successful.', 'user_data': user_data.data}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ACCOUNT ACTIVATION
 class AccountActivation(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -270,13 +309,13 @@ class AccountActivation(APIView):
 
         # Check if uid is provided and not empty
         if not uid:
-            return Response({'error': 'Please provide the "uid" value.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Please provide the UserID value.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Retrieve the User object by uid
         try:
             user = User.objects.get(uid=uid)
         except User.DoesNotExist:
-            return Response({'error': 'User with the provided UID does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'User with the provided UserID does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the user account is already active
         if user.is_active:

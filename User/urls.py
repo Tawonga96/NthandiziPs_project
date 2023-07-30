@@ -8,6 +8,7 @@ urlpatterns =[
     path('register/', views.UserRegistration.as_view(), name='user-registration'),
     path('login/',views.UserLogin.as_view(), name='user-login'),
     path('community_leader_login/', views.CommunityLeaderLogin.as_view(), name='community_leader_login'),
+    path('police_officer_login/', views.PoliceOfficerLogin.as_view(), name='police_officer_login'),
     path('activate-account/', views.AccountActivation.as_view(), name='account-activation'),
 
 ]

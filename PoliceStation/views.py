@@ -44,39 +44,56 @@ class PoliceofficerCreate(generics.CreateAPIView):
         # Extract the data from the request
         position = request.data.get('position')
         pid = request.data.get('pid')  # Assuming user_id is provided in the request data
+        ps_name = request.data.get('ps_name')
+        assigned_on = request.data.get('assigned_on')  # Assuming assigned_on is provided in the request data
 
-        # Check if pid and position are provided and not empty
-        if not pid or not position:
-            return Response({"error": "Please provide both 'user ID' and 'position' values."}, status=status.HTTP_400_BAD_REQUEST)
+        # Check if pid, position, and ps_name are provided and not empty
+        if not pid or not position or not ps_name:
+            return Response({"error": "Please provide 'user ID', 'position', and 'police station name' values."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the User instance for the provided user_id
         try:
-            user = User.objects.get(pk=pid)
+            user = User.objects.get(uid=str(pid)) # Convert cid to string for lookup
         except User.DoesNotExist:
             return Response({'error': 'User with the provided primary key does not exist.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Check if a Policeofficer with the provided User (pid) already exists
-        existing_officer = Policeofficer.objects.filter(pid=user).first()
+        existing_officer = Policeofficer.objects.filter(user=user).first()
         if existing_officer:
             # If Policeofficer already exists, return a response indicating that the user is already registered as a Police Officer
             return Response({"error": "User with the provided ID is already registered as a Police Officer."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Perform any additional validation or logic here before creating the Police Officer
-
         # Create the Police Officer object using the provided data and the User instance
         police_officer = Policeofficer.objects.create(
-            pid=user,
+            pid=pid,
             position=position,
+            user =user
+        )
+
+        # Get the Policestation instance based on the provided ps_name
+        try:
+            policestation_instance = Policestation.objects.get(ps_name=ps_name)
+        except Policestation.DoesNotExist:
+            return Response({'error': 'Police station with the provided name does not exist.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Create the JobPosting object using the instances of Policeofficer, Policestation, and Community
+        job_posting = JobPosting.objects.create(
+            pid=police_officer,
+            psid=policestation_instance,
+            assigned_on=assigned_on,
+            is_active=1,  # Assuming you want to set a default value for is_active
         )
 
         # Send the confirmation email for Police Officer registration
         self.send_confirmation_email_police_officer(user, police_officer)
 
-        # Return a response with the created Police Officer data
+        # Return a response with the created Police Officer and JobPosting data
         data = {
             'police_officer': PoliceofficerSerializer(police_officer).data,
+            'job_posting': JobPostingSerializer(job_posting).data,
         }
         return Response(data, status=status.HTTP_201_CREATED)
 
