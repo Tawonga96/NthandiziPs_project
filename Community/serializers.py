@@ -40,4 +40,4 @@ class MemberSerializer(serializers.ModelSerializer):
      
      class Meta:
         model = Member
-        fields = ['cid','community','is_active','date_joined','left_on','citizen_typ']
+        fields = ['mid','cid','community','is_active','date_joined','left_on','citizen_typ']

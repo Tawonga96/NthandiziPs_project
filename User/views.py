@@ -197,7 +197,7 @@ class UserLogin(APIView):
             try:
                 user = User.objects.get(fname=fname)
             except User.DoesNotExist:
-                return Response({'error': 'User with the provided First Name does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Provided User does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
 
             if user.password != password:
                 return Response({'error': 'Invalid password.'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -232,10 +232,17 @@ class CommunityLeaderLogin(APIView):
             fname = serializer.validated_data.get('fname')
             password = serializer.validated_data.get('password')
 
+          
             try:
                 user = User.objects.get(fname=fname)
             except User.DoesNotExist:
                 return Response({'error': 'User with the provided First Name does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # # Check if fname and password are provided and not empty
+            # if not fname or not password:
+            #     return Response({'error': 'Please provide both the "fname" and "password" values.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
     
             if user.password != password:
                 return Response({'error': 'Invalid password.'}, status=status.HTTP_401_UNAUTHORIZED)
