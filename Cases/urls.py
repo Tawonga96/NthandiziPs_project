@@ -10,12 +10,12 @@ urlpatterns =[
 
     path('Alerttext/<int:pk>/', views.AlertTextDetail.as_view()),
     path('Alerttext/', views.AlertTextList.as_view()),
-    path('CreateAlert_text/', views.AlertTextCreate.as_view(), name='create-alert-text'),
+    # path('CreateAlert_text/', views.AlertTextCreate.as_view(), name='create-alert-text'),
 
 
     path('Alertmultimedia/<int:pk>/', views.AlertTextMultimediaDetail.as_view()),
     path('Alertmultimedia/', views.AlertTextMultimediaList.as_view()),
-    path('CreateAlert_multimedia/', views.AlertMultimediaCreate.as_view(), name='create-alert-multimedia'),
+    # path('CreateAlert_multimedia/', views.AlertMultimediaCreate.as_view(), name='create-alert-multimedia'),
 
 
 ]

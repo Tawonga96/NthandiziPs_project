@@ -5,7 +5,6 @@ from Community.serializers import *
 
 
 class CitizenSerializer(serializers.ModelSerializer):
-
       class Meta:
         model = Citizen
         fields = ['cid', 'occupation','user']
@@ -37,7 +36,6 @@ class HousememberSerializer(serializers.ModelSerializer):
         
 
 class MemberSerializer(serializers.ModelSerializer):
-     
      class Meta:
         model = Member
-        fields = ['mid','cid','community','is_active','date_joined','left_on','citizen_typ']
+        fields = ['mid','cid','community','date_joined','left_on','citizen_typ']

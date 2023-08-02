@@ -1,18 +1,16 @@
 import re
-from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
 from rest_framework.response import Response
+from rest_framework import generics,permissions, status
 from Community.models import Citizen
 from Community.serializers import *
-from rest_framework import generics,permissions, status
 from Community.models import Community, Member
-from django.contrib.auth import authenticate
 from User.models import User
-from User.serializers import UserSerializer
-from django.core.mail import send_mail
-from rest_framework.authtoken.models import Token
-import random
-
-
+# from django.shortcuts import get_object_or_404
+# from rest_framework.authtoken.models import Token
+# import random
+# from User.serializers import UserSerializer
+# from django.contrib.auth import authenticate
 
 
 class CommunityDetail(generics.RetrieveAPIView):
@@ -40,7 +38,6 @@ class CommunityCreate(generics.CreateAPIView):
         comm_name = serializer.validated_data['comm_name']
         area = serializer.validated_data.get('area')
 
-        # Perform any additional validation or logic here before creating the community
         # Check if district and comm_name are provided and not empty
         if not district or not comm_name:
             return Response({"error": "Please provide both 'district' and 'comm_name' values."},
@@ -90,13 +87,6 @@ class CitizenRegistration(generics.CreateAPIView):
         # Validate the format of cid (6-character alphanumeric)
         if not re.match(r'^[a-zA-Z0-9]{6}$', cid):
             return Response({"error": "Please provide a valid UserID"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
-
-        # Check if cid and comm_name are provided and not empty
-        # if not cid:
-        #     return Response({"error": "Please provide a UserID"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # if not comm_name:
-        #     return Response({"error": "Please provide a 'community name'."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if cid and occupation are provided and not empty
         if not cid or not occupation:

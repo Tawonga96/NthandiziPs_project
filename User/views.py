@@ -1,22 +1,22 @@
-import random
-import re
+from rest_framework.response import Response
+from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
-from Cases.serializers import MemberSerializer
-from Nthandizi_ps import settings
-from PoliceStation.models import *
-from User.serializers import *
-from rest_framework import generics, permissions, status
-from rest_framework.views import APIView
-
-from User.serializers import UserSerializer, LoginSerializer
-
-from Community.models import *
-# from Community.models import Member, Citizen  # Import the Member and Citizen models
-from rest_framework.response import Response
-from User.models import User
 from twilio.rest import Client
+import random
+import re
+from Nthandizi_ps import settings
+from User.serializers import *
+from User.models import User
+from User.serializers import UserSerializer, LoginSerializer
+from PoliceStation.models import *
+from Community.models import *
+from Community.serializers import *
+
+
+
 
 
 
@@ -61,7 +61,7 @@ class UserRegistration(generics.CreateAPIView):
 
         # Check if any of the required fields are empty
         if not fname or not lname or not pnumber or not password or not email:
-            return Response({'error': 'Please provide values for all required fields.'},
+            return Response({'error': 'Please provide values for all empty fields.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Validate fname and lname format using custom validators
@@ -79,10 +79,6 @@ class UserRegistration(generics.CreateAPIView):
             validate_email(email)
         except ValidationError:
             return Response({'message': 'Invalid email format.'}, status=status.HTTP_403_FORBIDDEN)
-
-        # Check if the email already exists in the database
-        # if User.objects.filter(email=email).exists():
-        #     return Response({'error': 'Email already exists. Please use a different email.'}, status=status.HTTP_409_CONFLICT)
 
         # Validate the password format using custom password validator
         password = serializer.validated_data['password']
@@ -173,17 +169,7 @@ class UserRegistration(generics.CreateAPIView):
        # Validate phone number to start with '+265' and have 13 digits in total
         return re.match(r'^\+265\d{9}$', pnumber)
 
-
-
-
-
-
-
-
-
-
-
-# USER / MEMBER LOGIN LOGIC
+## USERlOGIN
 class UserLogin(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -206,18 +192,46 @@ class UserLogin(APIView):
             if not user.is_active:
                 return Response({'message': 'Your account is not yet activated.'}, status=status.HTTP_403_FORBIDDEN)
 
-            user_data = UserSerializer(user)
-            user_data.data.pop('password', None)
+            # Retrieve the related Citizen instance
+            citizen_instance = user.citizen
 
-            return Response({'message': 'Authentication successful.', 'user_data': user_data.data}, status=status.HTTP_200_OK)
+            # Retrieve the related Member instance using the cid from Citizen
+            try:
+                member_instance = Member.objects.get(cid=citizen_instance)
+            except Member.DoesNotExist:
+                return Response({'error': 'Member with the provided Citizen ID does not exist.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            # Serialize the Member and Citizen instances
+            member_serializer = MemberSerializer(member_instance)
+            citizen_serializer = CitizenSerializer(citizen_instance)
+
+            # Retrieve the associated CommunityLeader instance (if exists)
+            try:
+                community_leader_instance = CommunityLeader.objects.get(leader=member_instance)
+            except CommunityLeader.DoesNotExist:
+                community_leader_instance = None
+
+            # Serialize the Community and CommunityLeader instances (if available)
+            community_serializer = CommunitySerializer(member_instance.community)
+            community_leader_serializer = CommunityLeaderSerializer(community_leader_instance) if community_leader_instance else None
+
+            user_data = UserSerializer(user).data
+            user_data.pop('password', None)
+
+            # Add the 'mid', 'citizen', 'community', and 'community_leader' data to the response
+            user_data['mid'] = member_serializer.data['mid']
+            user_data['citizen_typ'] = member_serializer.data['citizen_typ']
+            user_data['occupation'] = citizen_serializer.data['occupation']
+            user_data['comm_name'] = community_serializer.data['comm_name']
+            user_data['district'] = community_serializer.data['district']
+            # user_data['community'] = community_serializer.data
+            # user_data['citizen'] = citizen_serializer.data
+            # user_data['community_leader'] = community_leader_serializer.data if community_leader_serializer else None
+
+            return Response({'message': 'Authentication successful.', 'user_data': user_data}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-
-
-
-
-
 
 
 
