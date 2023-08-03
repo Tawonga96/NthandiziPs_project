@@ -1,6 +1,7 @@
 from django.urls import path 
 from . import views 
 
+
 urlpatterns =[
     path('', views.AlertList.as_view()),
     path('Alert/<int:pk>/', views.AlertDetail.as_view()),

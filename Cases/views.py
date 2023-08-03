@@ -1,9 +1,10 @@
 from rest_framework.response import Response
 from rest_framework import generics, permissions, status
 from rest_framework import status
+from django.core.files.storage import FileSystemStorage
+from django.shortcuts import render
 from Cases.models import Alert, AlertText, AlertMultimedia
 from Cases.serializers import *
-from django.shortcuts import render
 from Community.models import Member
 from Community.serializers import MemberSerializer
 
@@ -68,9 +69,6 @@ class AlertCreate(generics.CreateAPIView):
             path = request.data.get('path')
             ext = request.data.get('ext')
 
-            # if not message:
-            #     return Response({'error': 'Please provide message you want to send'}, status=status.HTTP_400_BAD_REQUEST)
-
             alert_multimedia = AlertMultimedia.objects.create(
                 alert_id=alert.alert_id,
                 path=path,
@@ -81,6 +79,37 @@ class AlertCreate(generics.CreateAPIView):
                 'alert': AlertSerializer(alert).data,
                 'alert_multimedia': alert_multimedia_serializer.data,
             }
+
+            # Now handle the multimedia (video) upload and associate the video path with the AlertMultimedia object
+            video_file = request.FILES.get('video')
+            if video_file:
+                fs = FileSystemStorage()
+                filename = fs.save(video_file.name, video_file)
+                video_path = fs.url(filename)
+                alert_multimedia.path = video_path
+                alert_multimedia.ext = 'video'  # Assuming the extension is 'video', you can change it accordingly
+                alert_multimedia.save()
+
+              # Now handle the multimedia (image) upload and associate the image path with the AlertMultimedia object
+            image_file = request.FILES.get('image')
+            if image_file:
+                fs = FileSystemStorage()
+                filename = fs.save(image_file.name, image_file)
+                image_path = fs.url(filename)
+                alert_multimedia.path = image_path
+                alert_multimedia.ext = 'image'  # Assuming the extension is 'image', you can change it accordingly
+                alert_multimedia.save()
+
+            # Check if either video or image file is provided, return an error response if none are provided
+            if not video_file and not image_file:
+                return Response({'error': 'Video or Image file is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            else:
+                # If the video file is not provided, return an error response
+                return Response({'error': 'Video file is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+            
         else:
             data = {
                 'alert': AlertSerializer(alert).data,
